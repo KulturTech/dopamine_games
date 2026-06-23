@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Ghar — learn Hindi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#14101f; --bg-1:#241640;
+    --card:#211736; --card-2:#2c1f4d;
+    --ink:#f6f1ff; --ink-dim:#a99ec9;
+    --pink:#ff3d8b; --cyan:#2ee6d6; --gold:#ffd23f;
+    --good:#3ddc84; --bad:#ff5d6c;
+  }
+   *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    font-family:'Fredoka',system-ui,sans-serif;
+    background:radial-gradient(120% 120% at 50% 0%, var(--bg-1) 0%, var(--bg-0) 60%);
+    color:var(--ink); min-height:100%;
+    display:flex; flex-direction:column; align-items:center;
+    -webkit-tap-highlight-color:transparent; user-select:none;
+  }
+ 
+  /* top bar */
+  header{width:100%;max-width:560px;display:flex;justify-content:space-between;align-items:center;padding:18px 22px;}
+  .stat{display:flex;flex-direction:column;line-height:1;}
+  .stat .num{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .stat .lab{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);font-weight:500;margin-top:4px;}
+  .stat.streak .num{color:var(--pink);}
+  .stat.right{align-items:flex-end;}
+ 
+  main{width:100%;max-width:560px;flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 22px 30px;}
+ 
+  /* prompt card */
+  .card{background:linear-gradient(180deg,var(--card-2),var(--card));border-radius:24px;
+    padding:34px 26px 28px;text-align:center;box-shadow:0 18px 40px rgba(0,0,0,.35);position:relative;overflow:hidden;}
+  .ask-label{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);font-weight:500;margin-bottom:16px;}
+  .prompt{font-size:clamp(32px,9vw,48px);font-weight:700;line-height:1.1;}
+  .prompt .deva{font-family:'Noto Sans Devanagari',sans-serif;}
+  .sub{margin-top:10px;font-size:18px;color:var(--ink-dim);font-weight:500;min-height:24px;}
+  .sub .deva{font-family:'Noto Sans Devanagari',sans-serif;font-size:22px;}
+  .speaker{margin-top:18px;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;
+    background:rgba(46,230,214,.14);color:var(--cyan);font-size:24px;display:inline-flex;align-items:center;justify-content:center;
+    transition:transform .08s,background .15s;}
+  .speaker:active{transform:scale(.9);}
+  .speaker.pulse{animation:pulse .5s ease;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(46,230,214,.5);}100%{box-shadow:0 0 0 18px rgba(46,230,214,0);}}
+ 
+  /* answers */
+  .options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px;}
+  .opt{background:var(--card);border:2px solid transparent;border-radius:16px;padding:20px 14px;
+    font-family:inherit;font-size:22px;font-weight:600;color:var(--ink);cursor:pointer;
+    transition:transform .07s,border-color .12s,background .12s;min-height:68px;}
+  .opt .deva{font-family:'Noto Sans Devanagari',sans-serif;}
+  .opt:active{transform:scale(.97);}
+  .opt.correct{background:rgba(61,220,132,.18);border-color:var(--good);color:var(--good);}
+  .opt.wrong{background:rgba(255,93,108,.16);border-color:var(--bad);color:var(--bad);animation:shake .35s;}
+  .opt.dim{opacity:.45;}
+  @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
+ 
+  /* progress bar */
+  .progress{width:100%;max-width:560px;padding:0 22px 24px;}
+  .ptrack{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;}
+  .pfill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .4s ease;}
+ 
+  /* win overlay */
+  .win{position:fixed;inset:0;background:rgba(20,16,31,.9);backdrop-filter:blur(6px);
+    display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;z-index:20;}
+  .win.show{display:flex;}
+  .win h1{font-size:clamp(40px,12vw,72px);background:linear-gradient(120deg,var(--pink),var(--cyan));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .win p{color:var(--ink-dim);margin-top:10px;font-size:16px;font-weight:500;}
+  .btn{margin-top:26px;border:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:18px;color:var(--bg-0);
+    padding:15px 40px;border-radius:99px;background:var(--cyan);box-shadow:0 6px 0 #1aa89c;transition:transform .06s,box-shadow .06s;}
+  .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #1aa89c;}
+ 
+  .particle{position:fixed;width:9px;height:9px;border-radius:50%;pointer-events:none;z-index:15;}
+</style>
+</head>
+<body>
+  <header>
+    <div class="stat"><span class="num" id="score">0</span><span class="lab">Score</span></div>
+    <div class="stat streak" style="align-items:center"><span class="num" id="streak">0</span><span class="lab">Streak</span></div>
+    <div class="stat right"><span class="num" id="mastered">0/0</span><span class="lab">Mastered</span></div>
+  </header>
+ 
+  <main>
+    <div class="card">
+      <div class="ask-label" id="ask-label">What is the Hindi for…</div>
+      <div class="prompt" id="prompt">—</div>
+      <div class="sub" id="sub"></div>
+      <button class="speaker" id="speaker" aria-label="Hear it">🔊</button>
+    </div>
+    <div class="options" id="options"></div>
+  </main>
+ 
+  <div class="progress"><div class="ptrack"><div class="pfill" id="pfill"></div></div></div>
+ 
+  <div class="win" id="win">
+    <h1>Shabaash! 🎉</h1>
+    <p id="win-sub">You've got the whole set.</p>
+    <button class="btn" id="again">Keep reviewing</button>
+  </div>
+ 
+<script>
+// ============================================================
+//  GHAR — a Hindi vocab game for a complete beginner.
+//  Romanized-first, with spaced repetition + audio.
+//  To customize: edit DECK below. en = the meaning shown,
+//  roman = the answer to learn, hi = Devanagari (shown faintly,
+//  never tested yet). Add/remove freely — keep at least 4.
+// ============================================================
+const DECK = [
+  // --- food & kitchen ---
+  { en:'water',     roman:'paani',    hi:'पानी' },
+  { en:'rice',      roman:'chawal',   hi:'चावल' },
+  { en:'salt',      roman:'namak',    hi:'नमक' },
+  { en:'milk',      roman:'doodh',    hi:'दूध' },
+  { en:'tea',       roman:'chai',     hi:'चाय' },
+  { en:'onion',     roman:'pyaaz',    hi:'प्याज़' },
+  { en:'potato',    roman:'aaloo',    hi:'आलू' },
+  { en:'vegetable', roman:'sabzi',    hi:'सब्ज़ी' },
+  { en:'lentils',   roman:'daal',     hi:'दाल' },
+  { en:'sugar',     roman:'cheeni',   hi:'चीनी' },
+  { en:'food',      roman:'khaana',   hi:'खाना' },
+  // --- the home ---
+  { en:'home',      roman:'ghar',     hi:'घर' },
+  { en:'kitchen',   roman:'rasoi',    hi:'रसोई' },
+  { en:'door',      roman:'darwaaza', hi:'दरवाज़ा' },
+  { en:'window',    roman:'khidki',   hi:'खिड़की' },
+  { en:'chair',     roman:'kursi',    hi:'कुर्सी' },
+  { en:'table',     roman:'mez',      hi:'मेज़' },
+  { en:'room',      roman:'kamra',    hi:'कमरा' },
+  { en:'hot',       roman:'garam',    hi:'गरम' },
+  { en:'cold',      roman:'thanda',   hi:'ठंडा' },
+];
+ 
+// --- spaced repetition state (per word) --------------------
+// interval = how many questions until this word is due again.
+// dueAt    = the question-tick when it should reappear.
+// A right answer doubles the interval; a wrong one resets it
+// to 1 so the word comes back almost immediately.
+DECK.forEach(w => { w.interval = 1; w.dueAt = 0; w.correct = 0; w.seen = 0; });
+ 
+let score = 0, streak = 0, tick = 0, current = null, locked = false;
+const $ = id => document.getElementById(id);
+ 
+// --- audio (browser's Hindi voice; quality varies by device) ---
+let hiVoice = null;
+function loadVoices(){
+  const vs = speechSynthesis.getVoices();
+  hiVoice = vs.find(v => (v.lang||'').toLowerCase().startsWith('hi')) || null;
+}
+if ('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
+function say(word){
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(hiVoice ? word.hi : word.roman);
+  u.lang = 'hi-IN'; if (hiVoice) u.voice = hiVoice; u.rate = 0.85;
+  speechSynthesis.speak(u);
+  const sp = $('speaker'); sp.classList.remove('pulse'); void sp.offsetWidth; sp.classList.add('pulse');
+}
+ 
+// --- pick the most-overdue word (the SRS scheduler) --------
+function pickNext(){
+  tick++;
+  const pool = DECK.filter(w => w !== current);          // avoid immediate repeat
+  pool.sort((a,b) => (a.dueAt - b.dueAt) || (a.seen - b.seen));
+  return pool[0];
+}
+ 
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} return a; }
+ 
+function distractors(word, field){
+  return shuffle(DECK.filter(w => w !== word)).slice(0,3).map(w => w[field]);
+}
+ 
+// --- build one question ------------------------------------
+// The ladder: a fresh word asks meaning -> Hindi (recognition).
+// Once it's been right twice it flips to Hindi -> meaning,
+// which is harder and proves real recall.
+function ask(word){
+  current = word; locked = false;
+  const reverse = word.correct >= 2;                    // graduated?
+  const field = reverse ? 'en' : 'roman';
+  const answer = word[field];
+  const opts = shuffle([answer, ...distractors(word, field)]);
+ 
+  if (reverse){
+    $('ask-label').textContent = 'What does this mean?';
+    $('prompt').innerHTML = word.roman;
+    $('sub').innerHTML = `<span class="deva">${word.hi}</span>`;
+  } else {
+    $('ask-label').textContent = 'What is the Hindi for…';
+    $('prompt').textContent = word.en;
+    $('sub').innerHTML = '';
+  }
+ 
+  const box = $('options'); box.innerHTML = '';
+  opts.forEach(text => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = reverse ? text : `${text}`;
+    b.onclick = () => answerPicked(b, text === answer);
+    box.appendChild(b);
+  });
+  say(word);                                            // hear it every round
+}
+ 
+function answerPicked(btn, right){
+  if (locked) return; locked = true;
+  const w = current; w.seen++;
+  const buttons = [...document.querySelectorAll('.opt')];
+ 
+  if (right){
+    btn.classList.add('correct');
+    burst(btn);
+    streak++;
+    score += 10 * (1 + Math.floor(streak/3));           // streak multiplier (the reward engine)
+    w.correct++;
+    w.interval = Math.min(w.interval * 2, 32);           // push it further out
+  } else {
+    btn.classList.add('wrong');
+    streak = 0;
+    w.correct = Math.max(0, w.correct - 1);
+    w.interval = 1;                                      // bring it right back
+    // reveal the correct one
+    const correctText = (w.correct >= 2 ? w.en : w.roman);
+    buttons.forEach(b => { if (b.textContent === correctText) b.classList.add('correct'); });
+  }
+  w.dueAt = tick + w.interval;
+  buttons.forEach(b => { b.disabled = true; if(!b.classList.contains('correct')&&!b.classList.contains('wrong')) b.classList.add('dim'); });
+ 
+  updateHUD();
+  setTimeout(() => { if (allMastered()) showWin(); else ask(pickNext()); }, right ? 750 : 1500);
+}
+ 
+// --- mastery + HUD -----------------------------------------
+function isMastered(w){ return w.correct >= 4 && w.interval >= 16; }
+function allMastered(){ return DECK.every(isMastered); }
+ 
+function updateHUD(){
+  $('score').textContent = score;
+  $('streak').textContent = streak;
+  const m = DECK.filter(isMastered).length;
+  $('mastered').textContent = m + '/' + DECK.length;
+  $('pfill').style.width = (m / DECK.length * 100) + '%';
+}
+ 
+function showWin(){
+  $('win-sub').textContent = `Mastered all ${DECK.length} words with a top score of ${score}.`;
+  $('win').classList.add('show');
+}
+$('again').onclick = () => {
+  DECK.forEach(w => { w.interval = 1; w.dueAt = 0; w.correct = 0; w.seen = 0; });
+  score = 0; streak = 0; tick = 0; current = null;
+  $('win').classList.remove('show'); updateHUD(); ask(pickNext());
+};
+ 
+// --- a small celebratory particle burst --------------------
+function burst(el){
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  const colors = ['#ff3d8b','#2ee6d6','#ffd23f','#3ddc84'];
+  for (let i=0;i<14;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.background = colors[(Math.random()*colors.length)|0];
+    p.style.left = cx+'px'; p.style.top = cy+'px';
+    document.body.appendChild(p);
+    const a = Math.random()*Math.PI*2, d = 40+Math.random()*70;
+    p.animate(
+      [{transform:'translate(-50%,-50%) scale(1)',opacity:1},
+       {transform:`translate(${Math.cos(a)*d-50}%,${Math.sin(a)*d-50}%) scale(0)`,opacity:0}],
+      {duration:600+Math.random()*200, easing:'cubic-bezier(.2,.7,.3,1)'}
+    ).onfinish = () => p.remove();
+  }
+}
+ 
+$('speaker').onclick = () => current && say(current);
+ 
+// go
+updateHUD();
+ask(pickNext());
+</script>
+</body>
+</html>
