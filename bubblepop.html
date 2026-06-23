@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>POP — a dopamine loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#14101f;
+    --bg-1:#241640;
+    --ink:#f6f1ff;
+    --ink-dim:#a99ec9;
+    --pink:#ff3d8b;
+    --cyan:#2ee6d6;
+    --gold:#ffd23f;
+    --danger:#ff4d4d;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;overflow:hidden;}
+  body{
+    font-family:'Fredoka',system-ui,sans-serif;
+    background:radial-gradient(120% 120% at 50% 0%, var(--bg-1) 0%, var(--bg-0) 60%);
+    color:var(--ink);
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+    touch-action:manipulation;
+  }
+  #stage{position:fixed;inset:0;}
+  canvas{display:block;width:100%;height:100%;}
+
+  /* HUD */
+  #hud{position:fixed;top:0;left:0;right:0;padding:18px 20px;display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none;z-index:5;}
+  .score-wrap{display:flex;flex-direction:column;line-height:1;}
+  .score-label{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);font-weight:500;margin-bottom:4px;}
+  #score{font-size:46px;font-weight:700;font-variant-numeric:tabular-nums;transition:transform .08s ease;}
+  #score.bump{transform:scale(1.14);}
+  .best{font-size:13px;color:var(--ink-dim);margin-top:6px;font-weight:500;}
+
+  .combo-wrap{display:flex;flex-direction:column;align-items:flex-end;line-height:1;min-height:60px;}
+  #combo{font-size:34px;font-weight:700;color:var(--pink);opacity:0;transform:scale(.6);transition:transform .1s ease,opacity .15s ease;}
+  #combo.live{opacity:1;transform:scale(1);}
+  .combo-label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);font-weight:500;margin-top:3px;opacity:0;transition:opacity .15s;}
+  .combo-label.live{opacity:1;}
+
+  /* tension bar */
+  #tension-track{position:fixed;left:20px;right:20px;bottom:22px;height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;z-index:5;pointer-events:none;}
+  #tension-fill{height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .12s linear,background .2s;}
+  #tension-fill.hot{background:linear-gradient(90deg,var(--pink),var(--danger));}
+
+  /* overlays */
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:10;padding:32px;background:rgba(20,16,31,.82);backdrop-filter:blur(6px);}
+  .screen.hidden{display:none;}
+  .title{font-size:clamp(56px,16vw,120px);font-weight:700;letter-spacing:-.02em;background:linear-gradient(120deg,var(--pink),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent;line-height:.95;}
+  .tagline{color:var(--ink-dim);font-size:16px;font-weight:500;margin-top:14px;max-width:320px;}
+  .go-over-score{font-size:72px;font-weight:700;margin:6px 0;font-variant-numeric:tabular-nums;}
+  .go-over-label{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);font-weight:500;}
+  .newbest{color:var(--gold);font-size:15px;font-weight:600;margin-top:8px;height:18px;}
+  .btn{pointer-events:auto;margin-top:30px;border:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:20px;color:var(--bg-0);
+    padding:16px 44px;border-radius:99px;background:var(--cyan);box-shadow:0 8px 0 #1aa89c,0 14px 30px rgba(46,230,214,.35);
+    transition:transform .06s ease,box-shadow .06s ease;}
+  .btn:active{transform:translateY(6px);box-shadow:0 2px 0 #1aa89c,0 6px 14px rgba(46,230,214,.3);}
+  .hint{margin-top:22px;color:var(--ink-dim);font-size:13px;font-weight:400;max-width:300px;line-height:1.5;}
+</style>
+</head>
+<body>
+  <div id="stage"><canvas id="c"></canvas></div>
+
+  <div id="hud">
+    <div class="score-wrap">
+      <div class="score-label">Score</div>
+      <div id="score">0</div>
+      <div class="best" id="best">Best 0</div>
+    </div>
+    <div class="combo-wrap">
+      <div id="combo">×2</div>
+      <div class="combo-label" id="combo-label">combo</div>
+    </div>
+  </div>
+
+  <div id="tension-track"><div id="tension-fill"></div></div>
+
+  <div class="screen" id="start">
+    <div class="title">POP</div>
+    <div class="tagline">Tap the bubbles before they fade. Keep the chain alive.</div>
+    <button class="btn" id="start-btn">Start</button>
+    <div class="hint">Gold bubbles = jackpot. Letting bubbles pop themselves fills the meter at the bottom — fill it and you're out.</div>
+  </div>
+
+  <div class="screen hidden" id="gameover">
+    <div class="go-over-label">You scored</div>
+    <div class="go-over-score" id="final-score">0</div>
+    <div class="newbest" id="newbest"></div>
+    <button class="btn" id="retry-btn">Again</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let W = 0, H = 0, DPR = 1;
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---- Audio: tiny procedural synth, pitch rises with combo (feedback ramp) ----
+  let actx = null;
+  function audio(){ if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)(); return actx; }
+  function blip(freq, type='sine', dur=0.12, vol=0.25){
+    const a = audio(); const t = a.currentTime;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    o.frequency.exponentialRampToValueAtTime(freq*0.6, t+dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t+0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t+dur);
+  }
+
+  // ---- State ----
+  const COLORS = ['#ff3d8b','#2ee6d6','#9b5cff','#ffd23f'];
+  let bubbles=[], particles=[], pops=[];
+  let score=0, displayScore=0, combo=0, tension=0, running=false;
+  let elapsed=0, spawnTimer=0, shake=0, flash=0, flashColor='255,77,77';
+  let best = 0;
+
+  const scoreEl=document.getElementById('score');
+  const bestEl=document.getElementById('best');
+  const comboEl=document.getElementById('combo');
+  const comboLabel=document.getElementById('combo-label');
+  const tensionFill=document.getElementById('tension-fill');
+
+  function rand(a,b){return a+Math.random()*(b-a);}
+
+  function spawn(){
+    const gold = Math.random() < 0.07;            // variable reward: rare jackpot
+    const maxR = gold ? rand(34,42) : rand(28,46);
+    const margin = maxR + 14;
+    bubbles.push({
+      x: rand(margin, W-margin),
+      y: rand(margin+70, H-margin-40),
+      r: 0, maxR,
+      life: 1,                                     // 1 -> 0
+      // bubbles get shorter-lived as the round speeds up = rising pressure
+      decay: (gold ? 0.34 : 0.42) + Math.min(elapsed*0.012, 0.55),
+      grow: 0,
+      gold,
+      hue: gold ? '#ffd23f' : COLORS[(Math.random()*COLORS.length)|0],
+    });
+  }
+
+  function burst(x,y,color,n){
+    if(reduceMotion) n = Math.min(n, 6);
+    for(let i=0;i<n;i++){
+      const a=rand(0,Math.PI*2), sp=rand(1.5,7);
+      particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:rand(2,5),life:1,color});
+    }
+  }
+
+  function popBubble(b){
+    // reward scales with combo (the multiplier is the engine)
+    combo++;
+    const mult = 1 + Math.floor(combo/3);          // every 3 in a row bumps the multiplier
+    const base = b.gold ? 50 : 10;
+    const gained = base * mult;
+    score += gained;
+
+    burst(b.x, b.y, b.hue, b.gold ? 30 : 16);
+    pops.push({x:b.x, y:b.y, text:'+'+gained, life:1, gold:b.gold});
+
+    // sound pitch climbs with the chain — audible progress
+    blip(330 + Math.min(combo,24)*28, b.gold?'triangle':'sine', b.gold?0.22:0.1, b.gold?0.32:0.22);
+    if(b.gold){ shake = reduceMotion?4:16; flash=0.5; flashColor='255,210,63'; }
+    else shake = Math.max(shake, reduceMotion?2:6);
+
+    scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump');
+    updateCombo();
+  }
+
+  function missBubble(){
+    // letting one fade breaks the chain AND raises tension (loss aversion)
+    combo = 0;
+    tension = Math.min(1, tension + 0.2);
+    flash = 0.4; flashColor='255,77,77'; shake = Math.max(shake, reduceMotion?2:7);
+    blip(120,'sawtooth',0.16,0.2);
+    updateCombo();
+  }
+
+  function updateCombo(){
+    const mult = 1 + Math.floor(combo/3);
+    if(combo>=3){
+      comboEl.textContent='×'+mult;
+      comboEl.classList.add('live'); comboLabel.classList.add('live');
+      comboEl.style.transform='scale(1.25)';
+      requestAnimationFrame(()=>comboEl.style.transform='scale(1)');
+    } else {
+      comboEl.classList.remove('live'); comboLabel.classList.remove('live');
+    }
+  }
+
+  function pointer(e){
+    if(!running) return;
+    const rect = canvas.getBoundingClientRect();
+    const px = (e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+    const py = (e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+    // hit-test topmost bubble
+    for(let i=bubbles.length-1;i>=0;i--){
+      const b=bubbles[i];
+      const hitR = Math.max(b.r, 22);              // forgiving hitbox = feels responsive, never your fault
+      if((px-b.x)**2+(py-b.y)**2 <= hitR*hitR){
+        popBubble(b);
+        bubbles.splice(i,1);
+        return;
+      }
+    }
+  }
+  canvas.addEventListener('pointerdown', pointer);
+
+  function start(){
+    bubbles=[];particles=[];pops=[];
+    score=0;displayScore=0;combo=0;tension=0;elapsed=0;spawnTimer=0;
+    running=true;
+    document.getElementById('start').classList.add('hidden');
+    document.getElementById('gameover').classList.add('hidden');
+    updateCombo();
+    audio().resume?.();
+  }
+
+  function gameOver(){
+    running=false;
+    const newBest = score>best;
+    if(newBest) best=score;
+    bestEl.textContent='Best '+best;
+    document.getElementById('final-score').textContent=score;
+    document.getElementById('newbest').textContent = newBest && score>0 ? 'New best!' : '';
+    document.getElementById('gameover').classList.remove('hidden');
+  }
+
+  document.getElementById('start-btn').addEventListener('click', start);
+  document.getElementById('retry-btn').addEventListener('click', start);
+
+  let last=performance.now();
+  function loop(now){
+    const dt=Math.min((now-last)/1000,0.05); last=now;
+    ctx.clearRect(0,0,W,H);
+
+    if(running){
+      elapsed+=dt;
+      // spawn rate accelerates over time = escalation
+      const interval = Math.max(0.32, 0.95 - elapsed*0.02);
+      spawnTimer+=dt;
+      while(spawnTimer>=interval){ spawnTimer-=interval; spawn(); }
+
+      tension = Math.max(0, tension - dt*0.05);    // meter slowly drains if you behave
+      if(tension>=1){ gameOver(); }
+    }
+
+    // shake + flash transform
+    let ox=0,oy=0;
+    if(shake>0){ ox=rand(-shake,shake); oy=rand(-shake,shake); shake*=0.85; if(shake<0.4)shake=0; }
+    ctx.save(); ctx.translate(ox,oy);
+
+    // bubbles
+    for(let i=bubbles.length-1;i>=0;i--){
+      const b=bubbles[i];
+      if(running){
+        b.grow=Math.min(1,b.grow+dt*7); b.r=b.maxR*easeOut(b.grow);
+        if(b.grow>=1) b.life-=dt*b.decay;
+        if(b.life<=0){ missBubble(); bubbles.splice(i,1); continue; }
+      }
+      drawBubble(b);
+    }
+
+    // particles
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.vx*=0.97; p.life-=dt*2;
+      if(p.life<=0){particles.splice(i,1);continue;}
+      ctx.globalAlpha=Math.max(0,p.life);
+      ctx.fillStyle=p.color;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+
+    // floating score popups
+    ctx.textAlign='center';
+    for(let i=pops.length-1;i>=0;i--){
+      const f=pops[i]; f.y-=40*dt; f.life-=dt*1.4;
+      if(f.life<=0){pops.splice(i,1);continue;}
+      ctx.globalAlpha=Math.max(0,f.life);
+      ctx.font=(f.gold?'700 32px':'700 24px')+" Fredoka, sans-serif";
+      ctx.fillStyle=f.gold?'#ffd23f':'#f6f1ff';
+      ctx.fillText(f.text,f.x,f.y);
+    }
+    ctx.globalAlpha=1;
+    ctx.restore();
+
+    // flash overlay
+    if(flash>0){ flash-=dt*1.8; ctx.fillStyle='rgba('+flashColor+','+Math.max(0,flash*0.5)+')'; ctx.fillRect(0,0,W,H); }
+
+    // animate score counter toward target (numbers that climb feel better than numbers that jump)
+    displayScore += (score-displayScore)*Math.min(1,dt*12);
+    scoreEl.textContent=Math.round(displayScore);
+    tensionFill.style.width=(tension*100)+'%';
+    tensionFill.classList.toggle('hot', tension>0.6);
+
+    requestAnimationFrame(loop);
+  }
+
+  function easeOut(t){return 1-Math.pow(1-t,3);}
+
+  function drawBubble(b){
+    const t=b.grow<1?b.grow:(0.85+0.15*b.life);  // gentle pulse as it ages
+    const r=b.r;
+    // glow
+    const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,r*1.8);
+    g.addColorStop(0,hexA(b.hue,0.55)); g.addColorStop(1,hexA(b.hue,0));
+    ctx.fillStyle=g; ctx.beginPath();ctx.arc(b.x,b.y,r*1.8,0,Math.PI*2);ctx.fill();
+    // body
+    ctx.globalAlpha=b.grow<1?b.grow:Math.max(0.25,b.life);
+    ctx.fillStyle=b.hue; ctx.beginPath();ctx.arc(b.x,b.y,r,0,Math.PI*2);ctx.fill();
+    // highlight
+    ctx.fillStyle='rgba(255,255,255,.5)';
+    ctx.beginPath();ctx.arc(b.x-r*0.3,b.y-r*0.3,r*0.22,0,Math.PI*2);ctx.fill();
+    if(b.gold){
+      ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(b.x,b.y,r*0.66,0,Math.PI*2);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+
+  function hexA(hex,a){
+    const n=parseInt(hex.slice(1),16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
