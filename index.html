@@ -60,12 +60,25 @@
   .opt.wrong{background:rgba(255,93,108,.16);border-color:var(--bad);color:var(--bad);animation:shake .35s;}
   .opt.dim{opacity:.45;}
   @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
+
+  /* phrase mode */
+  .options.compact .opt{font-size:18px;min-height:auto;padding:16px 18px;text-align:left;}
+  .prompt.long{font-size:clamp(22px,6vw,32px);}
  
   /* progress bar */
   .progress{width:100%;max-width:560px;padding:0 22px 24px;}
   .ptrack{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;}
   .pfill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .4s ease;}
  
+   /* link to the flashcards page */
+  .navlink{display:inline-flex;align-items:center;gap:7px;margin:0 auto 22px;
+    font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.02em;
+    color:var(--cyan);text-decoration:none;
+    background:rgba(46,230,214,.10);border:1px solid rgba(46,230,214,.30);
+    padding:10px 20px;border-radius:99px;transition:background .15s,transform .07s;}
+  .navlink:hover{background:rgba(46,230,214,.18);}
+  .navlink:active{transform:scale(.96);}
+  
   /* win overlay */
   .win{position:fixed;inset:0;background:rgba(20,16,31,.9);backdrop-filter:blur(6px);
     display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;z-index:20;}
@@ -136,6 +149,13 @@ const DECK = [
   { en:'room',      roman:'kamra',    hi:'कमरा' },
   { en:'hot',       roman:'garam',    hi:'गरम' },
   { en:'cold',      roman:'thanda',   hi:'ठंडा' },
+  // -phrases-
+  { en:'I want water',   roman:'mujhe paani chahiye',  hi:'मुझे पानी चाहिए',     kind:'phrase' },
+{ en:'the food is delicious', roman:'khaana swaadisht hai', hi:'खाना स्वादिष्ट है', kind:'phrase' },
+{ en:"let's eat",      roman:'chalo khaate hain',    hi:'चलो खाते हैं',         kind:'phrase' },
+{ en:'what is this?',  roman:'yeh kya hai?',         hi:'यह क्या है?',          kind:'phrase' },
+{ en:"I'm hungry",     roman:'mujhe bhookh lagi hai',hi:'मुझे भूख लगी है',      kind:'phrase' },
+{ en:'I love you',     roman:'main tumse pyaar karta hoon', hi:'मैं तुमसे प्यार करता हूँ', kind:'phrase' },
 ];
  
 // --- spaced repetition state (per word) --------------------
@@ -177,6 +197,12 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))
 function distractors(word, field){
   return shuffle(DECK.filter(w => w !== word)).slice(0,3).map(w => w[field]);
 }
+function distractors(word, field){
+  const kind = word.kind || 'word';
+  const sameKind = DECK.filter(w => w !== word && (w.kind||'word') === kind);
+  const pool = sameKind.length >= 3 ? sameKind : DECK.filter(w => w !== word);
+  return shuffle(pool).slice(0,3).map(w => w[field]);
+}
  
 // --- build one question ------------------------------------
 // The ladder: a fresh word asks meaning -> Hindi (recognition).
@@ -188,6 +214,10 @@ function ask(word){
   const field = reverse ? 'en' : 'roman';
   const answer = word[field];
   const opts = shuffle([answer, ...distractors(word, field)]);
+  const isPhrase = (word.kind === 'phrase');
+    $('options').style.gridTemplateColumns = isPhrase ? '1fr' : '1fr 1fr';
+    $('options').classList.toggle('compact', isPhrase);
+    $('prompt').classList.toggle('long', isPhrase);
  
   if (reverse){
     $('ask-label').textContent = 'What does this mean?';
@@ -209,6 +239,7 @@ function ask(word){
   });
   say(word);                                            // hear it every round
 }
+
  
 function answerPicked(btn, right){
   if (locked) return; locked = true;
